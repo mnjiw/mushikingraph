@@ -1,0 +1,262 @@
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  font-family: "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+  color: #1a1a1a;
+  background: #f5f6f8;
+}
+
+.app-header {
+  display: flex; align-items: center; gap: 24px;
+  padding: 10px 20px;
+  background: #22303f;
+  color: #fff;
+}
+.app-header h1 { font-size: 18px; margin: 0; font-weight: 600; }
+.tabs { display: flex; gap: 4px; }
+.tab-btn {
+  padding: 8px 18px; border: none; border-radius: 6px 6px 0 0;
+  background: #34475c; color: #cfd8e3; cursor: pointer; font-size: 14px;
+}
+.tab-btn.active { background: #f5f6f8; color: #1a1a1a; font-weight: 600; }
+
+.notice-btn {
+  margin-left: auto;
+  background: none; border: none; color: #fff;
+  font-size: 22px; line-height: 1; padding: 4px; cursor: pointer;
+  opacity: 0.9;
+}
+.notice-btn:hover { opacity: 1; }
+
+.notice-popover {
+  position: fixed; top: 50px; right: 20px; z-index: 200;
+  width: 280px; max-width: calc(100vw - 40px);
+  background: #fff; color: #1a1a1a;
+  border: 1px solid #dcdfe3; border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  padding: 12px 14px;
+  font-size: 13px; line-height: 1.7;
+}
+.notice-popover[hidden] { display: none; }
+#notice-body p { margin: 0 0 8px; }
+#notice-body p:last-child { margin-bottom: 0; }
+
+.loading { padding: 40px; text-align: center; color: #666; font-size: 15px; }
+
+.app-body {
+  display: flex;
+  height: calc(100vh - 52px);
+}
+/* The sidebar is a direct child of .app-body now, sitting beside
+   .content-area, so it is never unmounted/remounted when the active tab
+   changes -- its scroll position, search text and filters stay put. */
+.content-area { flex: 1; min-width: 0; display: flex; }
+.tab-panel { display: none; flex: 1; min-width: 0; }
+.tab-panel.active { display: flex; }
+
+.sidebar {
+  width: 300px; flex-shrink: 0;
+  border-right: 1px solid #dcdfe3;
+  background: #fff;
+  overflow-y: auto;
+  padding: 10px;
+}
+.landscape-hint { display: none; }
+/* Mobile-only pseudo-tab; hidden on desktop where the sidebar is always shown. */
+.tab-btn[data-tab="select"] { display: none; }
+.main-panel {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column;
+  padding: 14px 20px;
+  overflow: auto;
+}
+
+.controls-row {
+  display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  margin-bottom: 8px; font-size: 13px;
+}
+.controls-row input[type="date"] { font-size: 13px; }
+.hint { color: #777; font-size: 12px; }
+#table-export-jpg, #table-quick-week, #table-quick-month, #graph-fit-debut, #graph-export-image {
+  font-size: 13px; padding: 5px 12px; cursor: pointer;
+  border: 1px solid #ccc; border-radius: 4px; background: #fff;
+}
+#table-export-jpg:hover, #table-quick-week:hover, #table-quick-month:hover, #graph-fit-debut:hover, #graph-export-image:hover { background: #f0f2f5; }
+
+.bg-color-label {
+  margin-left: auto; display: flex; align-items: center; gap: 6px;
+  color: #555;
+}
+.bg-color-label input[type="color"] {
+  width: 30px; height: 26px; padding: 0; border: 1px solid #ccc; border-radius: 4px; cursor: pointer;
+}
+
+.chart-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 300px;
+  background: #fff;
+  border: 1px solid #e3e6ea;
+  border-radius: 6px;
+}
+#chart-canvas { width: 100%; height: 100%; display: block; }
+.chart-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(20,20,20,0.9);
+  color: #fff;
+  font-size: 12px;
+  padding: 6px 9px;
+  border-radius: 4px;
+  line-height: 1.5;
+  white-space: nowrap;
+  transform: translate(-50%, -110%);
+  z-index: 5;
+}
+
+.empty-msg {
+  text-align: center; color: #999; padding: 40px; font-size: 14px;
+}
+
+/* ---- selector component ---- */
+.selector { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.sel-search {
+  width: 100%; padding: 6px 8px; font-size: 13px;
+  border: 1px solid #ccc; border-radius: 4px;
+}
+.sel-row { display: flex; align-items: center; gap: 6px; }
+.sel-row select { font-size: 12px; }
+
+.sel-filters { border: 1px solid #e3e6ea; border-radius: 4px; padding: 4px 8px; }
+.sel-filters summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
+.filter-group { margin: 4px 0 8px; }
+.filter-title { font-size: 11px; color: #666; margin-bottom: 2px; }
+.filter-options { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.filter-options label { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; white-space: nowrap; }
+.filter-clear {
+  font-size: 11px; padding: 3px 8px; margin-top: 2px;
+  border: 1px solid #ccc; border-radius: 4px; background: #fafafa; cursor: pointer;
+}
+
+.sel-count { color: #777; font-size: 11px; margin-right: auto; }
+.sel-select-all, .sel-deselect-all {
+  font-size: 11px; padding: 3px 8px;
+  border: 1px solid #ccc; border-radius: 4px; background: #fafafa; cursor: pointer;
+  white-space: nowrap;
+}
+
+.sel-list { display: flex; flex-direction: column; }
+.sel-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 3px 2px;
+  border-bottom: 1px solid #f0f1f3;
+}
+.sel-item .sel-name {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  cursor: pointer;
+}
+.sel-item .sel-name.graduated { color: #999; text-decoration: line-through; }
+
+.sel-item .color-swatch {
+  width: 26px; height: 26px; padding: 0; flex-shrink: 0;
+  border: 2px solid #ccc; border-radius: 50%; background: none; cursor: pointer;
+  opacity: 0.35; pointer-events: none;
+  transition: opacity .15s ease, border-color .15s ease, transform .1s ease;
+}
+.sel-item .color-swatch::-webkit-color-swatch-wrapper { padding: 0; border-radius: 50%; }
+.sel-item .color-swatch::-webkit-color-swatch { border: none; border-radius: 50%; }
+.sel-item .color-swatch::-moz-color-swatch { border: none; border-radius: 50%; }
+.sel-item.checked .color-swatch { opacity: 1; pointer-events: auto; border-color: #999; }
+.sel-item.checked .color-swatch:hover { border-color: #333; transform: scale(1.08); }
+
+.sel-item .color-reset {
+  visibility: hidden;
+  width: 18px; height: 18px; flex-shrink: 0; padding: 0;
+  font-size: 12px; line-height: 1; color: #888; background: #fff;
+  border: 1px solid #ddd; border-radius: 50%; cursor: pointer;
+}
+.sel-item.checked .color-reset { visibility: visible; }
+.sel-item .color-reset:hover { color: #333; border-color: #999; }
+
+/* ---- table ---- */
+.table-wrap { overflow: auto; flex: 1; }
+table#result-table {
+  table-layout: fixed;
+  border-collapse: collapse;
+  width: 580px;
+  margin: 0 auto;
+  font-size: 13px;
+  background: #fff;
+}
+.col-rank  { width: 50px; }
+.col-name  { width: 190px; } /* fits the longest name, "ソフィア・ヴァレンタイン" (12 chars) */
+.col-old,
+.col-new   { width: 110px; }
+.col-delta { width: 120px; }
+
+#result-table th, #result-table td {
+  padding: 6px 10px; border-bottom: 1px solid #eee; text-align: right;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#result-table th:nth-child(2), #result-table td:nth-child(2) { text-align: left; }
+#result-table thead th {
+  position: sticky; top: 0; background: #fff; border-bottom: 2px solid #ccc; cursor: default;
+}
+#result-table tbody tr:nth-child(odd) { background: #f7f7f7; }
+#result-table tbody tr:hover { background: #eef2f7; }
+.delta-pos { color: #111; }
+.delta-neg { color: #d63333; font-weight: 600; }
+
+/* ---- mobile layout (PC layout above is untouched outside this block) ----
+   Matches on EITHER a narrow width (portrait phones) OR a short height
+   (landscape phones -- many Android phones report a logical landscape
+   width well over 768px, but their height is always short, so relying on
+   width alone made landscape fall through to the PC layout). */
+@media (max-width: 768px), (max-height: 500px) {
+  .app-header { gap: 12px; padding: 8px 12px; }
+  .app-header h1 { font-size: 15px; }
+  .tab-btn { padding: 7px 12px; font-size: 13px; }
+  .tab-btn[data-tab="select"] { display: block; }
+
+  /* Fixed-height shell that never scrolls itself: exactly one of the
+     sidebar or the content-area is shown at a time (based on the active
+     tab) and each manages its own internal scrolling. This is what stops
+     the character list's scroll from fighting the page's scroll. */
+  .app-body { flex-direction: column; height: calc(100vh - 48px); overflow: hidden; }
+
+  .sidebar { display: none; width: 100%; border-right: none; }
+  #app[data-active-tab="select"] .sidebar { display: block; flex: 1; min-height: 0; }
+  #app[data-active-tab="select"] .content-area { display: none; }
+  .content-area { min-width: 0; min-height: 0; }
+
+  .main-panel { padding: 10px; }
+
+  .controls-row { gap: 8px 12px; }
+  .bg-color-label { margin-left: 0; }
+
+  .chart-wrap { min-height: 260px; }
+
+  .landscape-hint {
+    display: block; font-size: 12px; color: #555;
+    background: #eef1f5; border-radius: 4px;
+    padding: 6px 10px; margin-bottom: 8px;
+  }
+  /* Hide the hint again once the phone is actually rotated to landscape
+     (applies to both the graph and table tabs' hints). */
+  @media (orientation: landscape) {
+    .landscape-hint { display: none; }
+  }
+
+  /* Table shrinks to fit the screen. Rank/name may truncate (ellipsis is
+     already set on td via the base #result-table rules), but old/new/delta
+     counts keep a guaranteed width so the numbers are never cut off. The
+     old/new header cells hold a full ISO date ("2019-06-11"), which is the
+     widest content in the table, so those two columns are sized to that
+     rather than to the (shorter) registrant-count digits underneath. */
+  table#result-table { width: 100%; margin: 0; }
+  .col-rank  { width: 42px; } /* fits 2-digit ranks whenever space allows */
+  .col-name  { width: auto; }
+  .col-old,
+  .col-new   { width: 96px; }
+  .col-delta { width: 88px; }
+}

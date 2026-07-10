@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2434ムシキングラフ</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="app-header">
+  <h1>2434ムシキングラフ</h1>
+  <nav class="tabs">
+    <button class="tab-btn" data-tab="select">選択</button>
+    <button class="tab-btn active" data-tab="graph">グラフ</button>
+    <button class="tab-btn" data-tab="table">表</button>
+  </nav>
+  <button type="button" id="notice-btn" class="notice-btn" title="お知らせ" aria-label="お知らせ">&#x1F6C8;</button>
+</header>
+
+<!-- Site admin notice popover: edit the text inside #notice-body freely,
+     it's plain HTML shown as-is when the icon in the header is clicked. -->
+<div id="notice-popover" class="notice-popover" hidden>
+  <div id="notice-body">
+    <p>サイト管理者にご連絡・ご要望のある方は<a href="https://marshmallow-qa.com/zwd38efeigw7ow4">こちら</a>にお願いします。スマホ表示に対応しました。</p>
+  </div>
+</div>
+
+<div id="loading" class="loading">データを読み込み中...</div>
+
+<main id="app" class="app-body" hidden>
+
+  <!-- Shared character selector: lives OUTSIDE the graph/table panels so
+       switching tabs never touches its scroll position, search, sort or
+       filter state, and the checked characters + colors are always the
+       same set feeding both views. -->
+  <aside class="sidebar" id="char-selector"></aside>
+
+  <div class="content-area">
+    <!-- ============ GRAPH TAB ============ -->
+    <section id="tab-graph" class="tab-panel active">
+      <div class="main-panel">
+        <div class="controls-row">
+          <label>期間:
+            <input type="date" id="graph-date-from" min="2019-06-11" max="2026-07-01" value="2019-06-11">
+            〜
+            <input type="date" id="graph-date-to" min="2019-06-11" max="2026-07-01" value="2026-07-01">
+          </label>
+          <button type="button" id="graph-fit-debut">デビュー時期に合わせる</button>
+          <span class="hint">データ範囲: 2019-06-11 〜 2026-07-01</span>
+          <button type="button" id="graph-export-image">画像保存</button>
+          <label class="bg-color-label">背景色: <input type="color" id="graph-bg-color" value="#ffffff"></label>
+        </div>
+        <!-- Mobile-only hint: hidden on desktop and on mobile landscape,
+             shown only when a narrow screen is held in portrait. -->
+        <div class="landscape-hint">📱 横画面で見るとグラフが見やすくなります</div>
+        <div class="chart-wrap">
+          <canvas id="chart-canvas"></canvas>
+          <div id="chart-tooltip" class="chart-tooltip" hidden></div>
+        </div>
+        <div id="graph-empty" class="empty-msg">キャラクターを選択してください</div>
+      </div>
+    </section>
+
+    <!-- ============ TABLE TAB ============ -->
+    <section id="tab-table" class="tab-panel">
+      <div class="main-panel">
+        <div class="controls-row">
+          <label>期間:
+            <input type="date" id="table-date-old" min="2019-06-11" max="2026-07-01" value="2019-06-11">
+            〜
+            <input type="date" id="table-date-new" min="2019-06-11" max="2026-07-01" value="2026-07-01">
+          </label>
+          <label>並び順:
+            <select id="table-sort-key">
+              <option value="old">前登録者</option>
+              <option value="new" selected>後登録者</option>
+              <option value="delta">増加数</option>
+            </select>
+          </label>
+          <button type="button" id="table-quick-week">1週間</button>
+          <button type="button" id="table-quick-month">1か月</button>
+          <button type="button" id="table-export-jpg">画像保存</button>
+        </div>
+        <div id="table-effective-dates" class="hint"></div>
+        <div class="landscape-hint">📱 横画面で見ると表が見やすくなります</div>
+        <div class="table-wrap">
+          <table id="result-table">
+            <colgroup>
+              <col class="col-rank">
+              <col class="col-name">
+              <col class="col-old">
+              <col class="col-new">
+              <col class="col-delta">
+            </colgroup>
+            <thead>
+              <tr>
+                <th class="th-rank"></th>
+                <th class="th-name"></th>
+                <th class="th-old">登録者数</th>
+                <th class="th-new">登録者数</th>
+                <th class="th-delta">増加数</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div id="table-empty" class="empty-msg">キャラクターを選択してください</div>
+      </div>
+    </section>
+  </div>
+
+</main>
+
+<!-- template for the character selector -->
+<template id="tpl-selector">
+  <div class="selector">
+    <input type="search" class="sel-search" placeholder="名前で検索...">
+    <div class="sel-row">
+      <label>並び替え:
+        <select class="sel-sort">
+          <option value="number_debut">デビュー順</option>
+          <option value="number_subscribe" selected>登録者数順</option>
+          <option value="number_kana">50音順</option>
+        </select>
+      </label>
+    </div>
+    <details class="sel-filters" open>
+      <summary>絞り込み</summary>
+      <div class="filter-group" data-filter="generation">
+        <div class="filter-title">デビュー時期</div>
+        <div class="filter-options filter-generation"></div>
+      </div>
+      <div class="filter-group" data-filter="gender">
+        <div class="filter-title">性別</div>
+        <div class="filter-options filter-gender"></div>
+      </div>
+      <div class="filter-group" data-filter="graduation">
+        <div class="filter-title">在籍状況</div>
+        <div class="filter-options filter-graduation"></div>
+      </div>
+      <button type="button" class="filter-clear">絞り込み解除</button>
+    </details>
+    <div class="sel-row">
+      <div class="sel-count"></div>
+      <button type="button" class="sel-select-all">全て選択</button>
+      <button type="button" class="sel-deselect-all">選択解除</button>
+    </div>
+    <div class="sel-list"></div>
+  </div>
+</template>
+
+<script src="js/data.js"></script>
+<script src="js/selector.js"></script>
+<script src="js/graph.js"></script>
+<script src="js/table.js"></script>
+<script src="js/main.js"></script>
+<!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "e94ead580969484f93b982cdf1c6165f"}'></script><!-- End Cloudflare Web Analytics -->
+</body>
+</html>
