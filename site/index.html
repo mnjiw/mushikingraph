@@ -40,13 +40,15 @@
     <section id="tab-graph" class="tab-panel active">
       <div class="main-panel">
         <div class="controls-row">
+          <!-- min/max/value are filled in from data/dates.json at load time
+               (main.js) so the pickers always cover the latest collected day. -->
           <label>期間:
-            <input type="date" id="graph-date-from" min="2019-06-11" max="2026-07-01" value="2019-06-11">
+            <input type="date" id="graph-date-from">
             〜
-            <input type="date" id="graph-date-to" min="2019-06-11" max="2026-07-01" value="2026-07-01">
+            <input type="date" id="graph-date-to">
           </label>
           <button type="button" id="graph-fit-debut">デビュー時期に合わせる</button>
-          <span class="hint">データ範囲: 2019-06-11 〜 2026-07-01</span>
+          <span class="hint" id="data-range-hint"></span>
           <button type="button" id="graph-export-image">画像保存</button>
           <label class="bg-color-label">背景色: <input type="color" id="graph-bg-color" value="#ffffff"></label>
         </div>
@@ -66,9 +68,9 @@
       <div class="main-panel">
         <div class="controls-row">
           <label>期間:
-            <input type="date" id="table-date-old" min="2019-06-11" max="2026-07-01" value="2019-06-11">
+            <input type="date" id="table-date-old">
             〜
-            <input type="date" id="table-date-new" min="2019-06-11" max="2026-07-01" value="2026-07-01">
+            <input type="date" id="table-date-new">
           </label>
           <label>並び順:
             <select id="table-sort-key">

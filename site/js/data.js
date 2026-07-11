@@ -43,10 +43,14 @@ const App = (() => {
   const GRADUATION_LABELS = { 1: "在籍中", 2: "卒業" };
 
   async function load() {
+    // "no-cache" = always revalidate with the server (cheap 304 when
+    // unchanged), never serve straight from the browser cache -- these
+    // files gain a new day's data daily, so a stale cached copy would
+    // silently pin the whole app to an old date range.
     const [d, c, seriesBinBuf] = await Promise.all([
-      fetch("data/dates.json").then(r => r.json()),
-      fetch("data/characters.json").then(r => r.json()),
-      fetch("data/series.bin").then(r => r.arrayBuffer()),
+      fetch("data/dates.json", { cache: "no-cache" }).then(r => r.json()),
+      fetch("data/characters.json", { cache: "no-cache" }).then(r => r.json()),
+      fetch("data/series.bin", { cache: "no-cache" }).then(r => r.arrayBuffer()),
     ]);
     dates = d;
     dateTimestamps = d.map(iso => new Date(iso + "T00:00:00").getTime());

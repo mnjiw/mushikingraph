@@ -4,6 +4,24 @@
 
   await App.load();
 
+  // The date pickers' bounds/defaults come from the loaded data, not from
+  // hardcoded HTML attributes -- the data grows every day (the fetch
+  // workflow appends a new collection date), so a baked-in max would keep
+  // the UI stuck at whatever the latest date was when the HTML was written.
+  const firstDate = App.dates[0];
+  const lastDate = App.dates[App.dates.length - 1];
+  for (const id of ["graph-date-from", "graph-date-to", "table-date-old", "table-date-new"]) {
+    const el = document.getElementById(id);
+    el.min = firstDate;
+    el.max = lastDate;
+  }
+  document.getElementById("graph-date-from").value = firstDate;
+  document.getElementById("graph-date-to").value = lastDate;
+  document.getElementById("table-date-old").value = firstDate;
+  document.getElementById("table-date-new").value = lastDate;
+  document.getElementById("data-range-hint").textContent =
+    `データ範囲: ${firstDate} 〜 ${lastDate}`;
+
   loadingEl.hidden = true;
   appEl.hidden = false;
 
