@@ -107,11 +107,20 @@ const Graph = (() => {
 
     ctx.font = `${12 * dpr}px sans-serif`;
 
-    // y gridlines + labels
-    const yTicks = 5;
+    // y gridlines + labels — registrant counts are always recorded in
+    // increments of 1000 (last 3 digits are 0), so snap tick values to a
+    // "nice" step that is itself a multiple of 1000 rather than dividing
+    // the range into equal but arbitrary fractions.
+    const yTicksTarget = 5;
+    const rawStep = (yMax - yMin) / yTicksTarget;
+    const stepPow = Math.pow(10, Math.floor(Math.log10(Math.max(rawStep, 1))));
+    const stepFrac = rawStep / stepPow;
+    const niceFrac = stepFrac <= 1 ? 1 : stepFrac <= 2 ? 2 : stepFrac <= 5 ? 5 : 10;
+    const yStep = Math.max(1000, Math.ceil(niceFrac * stepPow / 1000) * 1000);
+    let tickStart = Math.ceil(yMin / yStep) * yStep;
+    if (tickStart > yMax) tickStart = Math.round(yMin / yStep) * yStep;
     ctx.textAlign = "right"; ctx.textBaseline = "middle";
-    for (let i = 0; i <= yTicks; i++) {
-      const v = yMin + (yMax - yMin) * i / yTicks;
+    for (let v = tickStart; v <= yMax + yStep * 0.001; v += yStep) {
       const y = yOf(v);
       ctx.strokeStyle = "#eee";
       ctx.beginPath(); ctx.moveTo(plotArea.x, y); ctx.lineTo(plotArea.x + plotArea.w, y); ctx.stroke();
