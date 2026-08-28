@@ -17,6 +17,13 @@ character added to character.csv with a real channelid), it's created here
 -- build_data.py hard-fails on any missing file, so this keeps adding a new
 character from breaking the next scheduled run.
 
+If the SKIP_IF_RECORDED_TODAY environment variable is truthy, the script
+exits without doing anything when today's (JST) data point has already been
+recorded for essentially every target character. That makes it safe to fire
+the workflow several times a day as a backup against GitHub Actions dropping
+or heavily delaying the scheduled run -- the backup runs become no-ops once
+the day's numbers are in.
+
 Requires the YOUTUBE_API_KEY environment variable. Run
 `python scripts/build_data.py` afterwards to regenerate site/data/*.
 """
@@ -37,6 +44,11 @@ API_URL = "https://www.googleapis.com/youtube/v3/channels"
 BATCH_SIZE = 50  # YouTube API allows up to 50 IDs per request
 
 JST = timezone(timedelta(hours=9))
+
+# バックアップ実行をスキップしてよいと判断する割合。登録者数を非公開にした
+# チャンネルが1つでもあると「全員分そろった」は永久に成立しないため、
+# ちょうど100%ではなく閾値で判定する。
+RECORDED_TODAY_THRESHOLD = 0.9
 
 
 def fetch_subscriber_counts(channel_ids):
@@ -90,6 +102,31 @@ def update_character_csv_file(name, count, today):
         f.write("\r\n".join(lines) + "\r\n")
 
 
+def last_recorded_date(name):
+    """CSVchar/<name>.CSV の最終行の日付(YYMMDD)。ファイルが無ければ None。"""
+    path = os.path.join(CSVCHAR_DIR, name + ".CSV")
+    if not os.path.exists(path):
+        return None
+    with open(path, encoding="cp932", newline="") as f:
+        lines = [l for l in f.read().splitlines() if l.strip()]
+    if not lines:
+        return None
+    return lines[-1].split(",")[0]
+
+
+def already_recorded_today(targets, today):
+    """今日(JST)の分がもう記録済みか。バックアップ実行の空振り判定に使う。"""
+    if not targets:
+        return False
+    done = sum(1 for r in targets if last_recorded_date(r["name"]) == today)
+    print("today's data already recorded for %d / %d characters" % (done, len(targets)))
+    return done >= len(targets) * RECORDED_TODAY_THRESHOLD
+
+
+def env_flag(name):
+    return os.environ.get(name, "").strip().lower() in ("1", "true", "yes")
+
+
 def main():
     if not API_KEY:
         raise SystemExit("ERROR: YOUTUBE_API_KEY is not set")
@@ -100,6 +137,12 @@ def main():
         rows = list(reader)
 
     targets = [r for r in rows if r["channelid"] != "0"]
+
+    today = yymmdd_today_jst()
+    if env_flag("SKIP_IF_RECORDED_TODAY") and already_recorded_today(targets, today):
+        print("today (%s JST) is already recorded -- nothing to do." % today)
+        return
+
     channel_ids = [r["channelid"] for r in targets]
     print("fetching subscriber counts for %d channels..." % len(channel_ids))
     counts = fetch_subscriber_counts(channel_ids)
@@ -108,7 +151,6 @@ def main():
     if not counts:
         raise SystemExit("ERROR: got zero subscriber counts back, aborting without writing anything")
 
-    today = yymmdd_today_jst()
     updated = 0
     for row in targets:
         cid = row["channelid"]

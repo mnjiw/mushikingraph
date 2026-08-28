@@ -2,8 +2,16 @@ name: Update subscriber counts
 
 on:
   schedule:
-    # 15:00 UTC = 00:00 JST (毎日日本時間0時に起動)
-    - cron: "0 15 * * *"
+    # GitHub Actionsのスケジュールは「その時刻以降のベストエフォート」でしかなく、
+    # 特に毎時00分は世界中のジョブが集中して数十分〜数時間遅れたり、
+    # 混雑時にはその回の起動自体が捨てられることがある。
+    # そのため (a) 00分ちょうどを避け、(b) 予備の起動時刻を複数用意する。
+    # 本命の1回で記録できていれば、予備の回は何もせず即終了する
+    # (SKIP_IF_RECORDED_TODAY を参照)。
+    - cron: "10 15 * * *"  # 15:10 UTC = 00:10 JST (本命)
+    - cron: "10 16 * * *"  # 16:10 UTC = 01:10 JST (予備1)
+    - cron: "10 18 * * *"  # 18:10 UTC = 03:10 JST (予備2)
+    - cron: "10 21 * * *"  # 21:10 UTC = 06:10 JST (予備3)
   workflow_dispatch: {}  # Actionsタブから手動実行もできるようにする
 
 # 動作中に別の実行が重ならないようにする(手動実行と定期実行が重複した場合など)
@@ -27,6 +35,9 @@ jobs:
       - name: YouTube Data APIで登録者数を取得し、CSVを更新する
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          # 予備の起動(本命以外のcron)のときだけ、その日の分が既に記録済みなら
+          # 何もせず終了する。手動実行(workflow_dispatch)では常に取得し直す。
+          SKIP_IF_RECORDED_TODAY: ${{ github.event_name == 'schedule' && github.event.schedule != '10 15 * * *' }}
         run: python scripts/fetch_subscribers.py
 
       - name: site/data/ を再生成する
@@ -40,6 +51,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "変更なし。コミットはスキップします。"
           else
-            git commit -m "登録者数を自動更新 ($(date -u +%Y-%m-%d))"
+            # 収集日はJST基準なので、コミットメッセージの日付もJSTに揃える
+            git commit -m "登録者数を自動更新 ($(TZ=Asia/Tokyo date +%Y-%m-%d))"
             git push
           fi
