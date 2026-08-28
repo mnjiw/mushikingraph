@@ -83,7 +83,13 @@ const Graph = (() => {
         const pts = App.pointsInRange(charId, fromIdx, toIdx);
         const points = pts.map(([di, c]) => [App.dateTimestamps[di], c]);
         points.forEach(([, c]) => { if (c < vMin) vMin = c; if (c > vMax) vMax = c; });
-        seriesList.push({ id: charId, color, name: charsById.get(charId).name, points });
+        // Debut timestamp is taken from the character's FIRST point overall,
+        // not from `points` -- `points` is clipped to the visible range, so
+        // for someone who debuted before the range it would wrongly report
+        // the range's left edge as their debut.
+        const firstIdx = App.firstDateIndex(charId);
+        const firstTs = firstIdx === null ? null : App.dateTimestamps[firstIdx];
+        seriesList.push({ id: charId, color, name: charsById.get(charId).name, points, firstTs });
       });
     }
     hoverSeries = seriesList;
@@ -180,16 +186,27 @@ const Graph = (() => {
         const dist = Math.abs(p[0] - targetTs);
         if (dist < bestDist) { best = p; bestDist = dist; }
       }
-      lines.push({ name: s.name, color: s.color, ts: best[0], count: best[1], dist: bestDist });
+      lines.push({ name: s.name, color: s.color, ts: best[0], count: best[1], dist: bestDist, firstTs: s.firstTs });
     });
     if (!lines.length) { tooltipEl.hidden = true; return; }
-    // Header date comes from whichever line is nearest the cursor; the
-    // list itself is ordered by registrant count at that date (highest first).
+    // Header date comes from whichever line is nearest the cursor.
     const nearest = lines.reduce((a, b) => (a.dist <= b.dist ? a : b));
-    lines.sort((a, b) => b.count - a.count);
+    // Anyone who hadn't debuted yet as of the date in the header has no
+    // number to show -- without this they'd fall back to their nearest known
+    // point, i.e. their debut-day count, reported as if it were that date's.
+    // The check is against the header date rather than the raw cursor
+    // position so the tooltip stays self-consistent with the date it prints.
+    lines.forEach(l => { l.pending = l.firstTs !== null && nearest.ts < l.firstTs; });
+    // Ordered by registrant count at that date (highest first), with the
+    // not-yet-debuted lines collected at the bottom (sort is stable, so they
+    // keep their selection order among themselves).
+    lines.sort((a, b) => {
+      if (a.pending !== b.pending) return a.pending ? 1 : -1;
+      return a.pending ? 0 : b.count - a.count;
+    });
 
     tooltipEl.innerHTML = `<div>${fmtDate(nearest.ts)}</div>` + lines.map(l =>
-      `<div><span style="color:${l.color}">●</span> ${escapeHtml(l.name)}: ${l.count.toLocaleString()}</div>`
+      `<div><span style="color:${l.color}">●</span> ${escapeHtml(l.name)}: ${l.pending ? "-" : l.count.toLocaleString()}</div>`
     ).join("");
     tooltipEl.hidden = false;
     const wrapRect = containerEl.getBoundingClientRect();
