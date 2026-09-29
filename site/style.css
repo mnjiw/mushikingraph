@@ -260,3 +260,11 @@ table#result-table {
   .col-new   { width: 96px; }
   .col-delta { width: 88px; }
 }
+
+/* Short site description below the app (mainly for search engines). */
+.site-footer {
+  max-width: 900px; margin: 0 auto;
+  padding: 16px 20px 24px;
+  color: #666; font-size: 12px; line-height: 1.7;
+}
+.site-footer p { margin: 0; }
