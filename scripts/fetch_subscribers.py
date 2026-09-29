@@ -19,7 +19,9 @@ character from breaking the next scheduled run.
 
 If the SKIP_IF_RECORDED_TODAY environment variable is truthy, the script
 exits without doing anything when today's (JST) data point has already been
-recorded for essentially every target character. That makes it safe to fire
+recorded for essentially every target character, and even when it does run,
+it never overwrites a line that already exists for today (it only fills in
+characters that are still missing). The first value recorded each day stays. That makes it safe to fire
 the workflow several times a day as a backup against GitHub Actions dropping
 or heavily delaying the scheduled run -- the backup runs become no-ops once
 the day's numbers are in.
@@ -85,7 +87,9 @@ def yymmdd_today_jst():
     return datetime.now(JST).strftime("%y%m%d")
 
 
-def update_character_csv_file(name, count, today):
+def update_character_csv_file(name, count, today, keep_existing=False):
+    """today の行を書き込む。書き込んだら True、既存の行を残して何もしなかったら False。
+    keep_existing=True のときは、today の行が既にあれば上書きしない。"""
     path = os.path.join(CSVCHAR_DIR, name + ".CSV")
     line = "%s,%d" % (today, count)
     if os.path.exists(path):
@@ -95,11 +99,14 @@ def update_character_csv_file(name, count, today):
     else:
         lines = []  # brand-new character -- this becomes its first data point
     if lines and lines[-1].split(",")[0] == today:
+        if keep_existing:
+            return False  # その日の最初の記録を残す
         lines[-1] = line  # already ran today -- overwrite instead of duplicating
     else:
         lines.append(line)
     with open(path, "w", encoding="cp932", newline="") as f:
         f.write("\r\n".join(lines) + "\r\n")
+    return True
 
 
 def last_recorded_date(name):
@@ -139,7 +146,8 @@ def main():
     targets = [r for r in rows if r["channelid"] != "0"]
 
     today = yymmdd_today_jst()
-    if env_flag("SKIP_IF_RECORDED_TODAY") and already_recorded_today(targets, today):
+    keep_existing = env_flag("SKIP_IF_RECORDED_TODAY")
+    if keep_existing and already_recorded_today(targets, today):
         print("today (%s JST) is already recorded -- nothing to do." % today)
         return
 
@@ -152,14 +160,18 @@ def main():
         raise SystemExit("ERROR: got zero subscriber counts back, aborting without writing anything")
 
     updated = 0
+    kept = 0
     for row in targets:
         cid = row["channelid"]
         if cid not in counts:
             print("WARNING: no count fetched for %s (%s), skipping" % (row["name"], cid), file=sys.stderr)
             continue
         count = counts[cid]
+        # 記録済みのキャラは上書きせず、character.csv の値もその日の記録のままにする
+        if not update_character_csv_file(row["name"], count, today, keep_existing):
+            kept += 1
+            continue
         row["number_subscribe"] = str(count)
-        update_character_csv_file(row["name"], count, today)
         updated += 1
 
     with open(CHARACTER_CSV, "w", encoding="cp932", newline="") as f:
@@ -167,7 +179,7 @@ def main():
         writer.writeheader()
         writer.writerows(rows)
 
-    print("updated %d / %d characters" % (updated, len(targets)))
+    print("updated %d / %d characters (kept existing: %d)" % (updated, len(targets), kept))
 
 
 if __name__ == "__main__":

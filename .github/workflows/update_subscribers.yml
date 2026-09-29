@@ -6,13 +6,22 @@ on:
     # 特に毎時00分は世界中のジョブが集中して数十分〜数時間遅れたり、
     # 混雑時にはその回の起動自体が捨てられることがある。
     # そのため (a) 00分ちょうどを避け、(b) 予備の起動時刻を複数用意する。
-    # 本命の1回で記録できていれば、予備の回は何もせず即終了する
+    # 2026-08-26以降は数時間遅れが続いているため、毎日0:10の本命の起動は
+    # Cloudflare Workers (cron-trigger/worker.js) から workflow_dispatch で行い、
+    # ここの4回はすべて予備にしている。その日の分が記録済みなら何もせず即終了する
     # (SKIP_IF_RECORDED_TODAY を参照)。
-    - cron: "10 15 * * *"  # 15:10 UTC = 00:10 JST (本命)
+    - cron: "10 15 * * *"  # 15:10 UTC = 00:10 JST (予備0)
     - cron: "10 16 * * *"  # 16:10 UTC = 01:10 JST (予備1)
     - cron: "10 18 * * *"  # 18:10 UTC = 03:10 JST (予備2)
     - cron: "10 21 * * *"  # 21:10 UTC = 06:10 JST (予備3)
-  workflow_dispatch: {}  # Actionsタブから手動実行もできるようにする
+  # Actionsタブからの手動実行と、Cloudflare Workers (cron-trigger/worker.js) からの
+  # 毎日0:10の起動に使う。
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "その日の分が記録済みでも取得し直して上書きする"
+        type: boolean
+        default: false
 
 # 動作中に別の実行が重ならないようにする(手動実行と定期実行が重複した場合など)
 concurrency:
@@ -35,9 +44,10 @@ jobs:
       - name: YouTube Data APIで登録者数を取得し、CSVを更新する
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-          # 予備の起動(本命以外のcron)のときだけ、その日の分が既に記録済みなら
-          # 何もせず終了する。手動実行(workflow_dispatch)では常に取得し直す。
-          SKIP_IF_RECORDED_TODAY: ${{ github.event_name == 'schedule' && github.event.schedule != '10 15 * * *' }}
+          # その日(JST)の分が既に記録済みなら、上書きせずに何もしないで終了する。
+          # 定期実行・Cloudflareからの起動・手動実行のすべてが対象。
+          # 手動実行で「force」にチェックを入れたときだけ、取得し直して上書きする。
+          SKIP_IF_RECORDED_TODAY: ${{ !inputs.force }}
         run: python scripts/fetch_subscribers.py
 
       - name: site/data/ を再生成する
